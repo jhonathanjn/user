@@ -27,10 +27,19 @@ public class User {
 
     private String password;
 
-    private LocalDateTime initTime;
+    @ManyToOne
+    @JoinColumn(name = "plan_id")
+    private Plan plan;
 
-    private LocalDateTime endTime;
+    @Column(name = "plan_start")
+    private LocalDateTime planStart = LocalDateTime.now();
+
+    @Column(name = "plan_end")
+    private LocalDateTime planEnd;
 
     @Enumerated(EnumType.STRING)
-    private UserRoles roles = UserRoles.GRATIS;
+    private UserRoles roles = UserRoles.USER;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt = LocalDateTime.now();
 }

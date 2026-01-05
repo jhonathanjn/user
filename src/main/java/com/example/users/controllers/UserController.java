@@ -23,7 +23,7 @@ public class UserController {
     private UserService userService;
 
     //Lista todos os usuarios do Banco de Dados
-    @GetMapping
+    @GetMapping("/allUsers")
     public ResponseEntity getAll(){
         return ResponseEntity.status(HttpStatus.OK).body(userService.getAll());
     }
@@ -59,8 +59,8 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.OK).body(userService.updateUser(id, dto));
     }
 
-    @PutMapping("plan/{id}")
-    public ResponseEntity updatePlan(@PathVariable(value = "id") Long id){
-        return ResponseEntity.status(HttpStatus.OK).body(userService.updatePlan(id));
+    @PutMapping("plan/{idU}/{idP}")
+    public ResponseEntity updatePlan(@PathVariable(value = "idU") Long idUser,@PathVariable(value = "idP") Long idPlan){
+        return ResponseEntity.status(HttpStatus.OK).body(userService.updatePlan(idUser, idPlan));
     }
 }

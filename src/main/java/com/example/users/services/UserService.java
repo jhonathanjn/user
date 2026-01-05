@@ -1,8 +1,10 @@
 package com.example.users.services;
 
 import com.example.users.dto.UserDto;
+import com.example.users.entitys.Plan;
 import com.example.users.entitys.User;
 import com.example.users.entitys.UserRoles;
+import com.example.users.repository.PlanRepository;
 import com.example.users.repository.UserRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +25,9 @@ public class UserService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private PlanRepository planRepository;
+
     public List<User> getAll(){
         List<User> users = userRepository.findAll();
         return users;
@@ -35,15 +40,29 @@ public class UserService {
     public User createUser(UserDto dto){
         User newUser = new User();
         BeanUtils.copyProperties(dto, newUser);
-        newUser.setInitTime(LocalDateTime.now());
 
-        if (newUser.getRoles() == UserRoles.GRATIS){
-            newUser.setEndTime(LocalDateTime.now().plusDays(7));
-        }else if (newUser.getRoles() == UserRoles.PAGO){
-            newUser.setEndTime(LocalDateTime.now().plusDays(30));
-        }else {
-            newUser.setRoles(UserRoles.GRATIS);
+        if (newUser.getRoles() == null){
+            newUser.setRoles(UserRoles.USER);
         }
+
+        newUser.setCreatedAt(LocalDateTime.now());
+
+        Plan freePlan = planRepository.findByName("FREE")
+                .orElseThrow(() -> new RuntimeException("Plano Free não encontrado!"));
+
+        newUser.setPlan(freePlan);
+
+        LocalDateTime start = LocalDateTime.now();
+        newUser.setPlanStart(start);
+
+        if (freePlan.getDuration() != null && freePlan.getDuration() > 0) {
+            newUser.setPlanEnd(start.plusDays(freePlan.getDuration()));
+        } else {
+            // plano vitalício (FREE eterno, por exemplo)
+            newUser.setPlanEnd(null);
+        }
+
+
         return userRepository.save(newUser);
 
     }
@@ -69,14 +88,33 @@ public class UserService {
         return ResponseEntity.status(HttpStatus.OK).body("User deletado");
     }
 
-    public User updatePlan(Long id){
-        User upgrade = userRepository.findById(id).orElse(null);
+    public ResponseEntity updatePlan(Long idUser, Long idPlan){
+        User upgradePlan = userRepository.findById(idUser).orElse(null);
+        Plan setPlan = planRepository.findById(idPlan).orElse(null);
 
-        upgrade.setRoles(UserRoles.PAGO);
-        upgrade.setInitTime(LocalDateTime.now());
-        upgrade.setEndTime(LocalDateTime.now().plusMonths(1));
 
-        return userRepository.save(upgrade);
+        if (upgradePlan == null || setPlan == null){
+
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Erro, usuario ou plano não existem!");
+
+        } else if ( upgradePlan.getPlan() != null &&
+                    upgradePlan.getPlan().getId().equals(setPlan.getId()) &&
+                    upgradePlan.getPlanEnd() != null &&
+                    upgradePlan.getPlanEnd().isAfter(LocalDateTime.now())) {
+
+            return ResponseEntity.status(HttpStatus.OK).body("O Plano ja esta ativo");
+        } else {
+            upgradePlan.setPlan(setPlan);
+
+            LocalDateTime start = LocalDateTime.now();
+            upgradePlan.setPlanStart(start);
+
+            upgradePlan.setPlanEnd(start.plusDays(setPlan.getDuration()));
+        }
+
+
+
+        return ResponseEntity.status(HttpStatus.OK).body(userRepository.save(upgradePlan));
 
     }
 
